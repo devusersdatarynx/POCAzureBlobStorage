@@ -6,6 +6,7 @@ import com.azure.storage.queue.models.*;
 import com.google.gson.Gson;
 
 import entity.Details;
+import io.swagger.annotations.ApiOperation;
 
 //Include follwing to import Azure blob storage API's 
 import com.azure.storage.blob.*;
@@ -24,10 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/zipfile")
 public class BlobController {
 	
-	 @Autowired
-	 RestTemplate restTemplate;
-	
-	@PostMapping("/upload")
+	@ApiOperation(value = "Uploads zip file and publishes message on azure queue")
+	@PostMapping("/uploadAndPublishMessageOnQueue")
 	public String uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
 		
 		try {
