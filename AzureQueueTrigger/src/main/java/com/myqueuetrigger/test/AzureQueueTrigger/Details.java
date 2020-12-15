@@ -1,6 +1,7 @@
 package com.myqueuetrigger.test.AzureQueueTrigger;
 
 import java.io.Serializable;
+import java.net.URI;
 
 public class Details implements Serializable {
 	
@@ -11,13 +12,13 @@ public class Details implements Serializable {
 
 	private String id;
 	
-	private String path;
+	private URI path;
 
 	public Details() {
 		super();
 	}
 
-	public Details(String id, String path) {
+	public Details(String id, URI path) {
 		super();
 		this.id = id;
 		this.path = path;
@@ -31,11 +32,11 @@ public class Details implements Serializable {
 		this.id = id;
 	}
 
-	public String getPath() {
+	public URI getPath() {
 		return path;
 	}
 
-	public void setPath(String path) {
+	public void setPath(URI path) {
 		this.path = path;
 	}
 	

@@ -1,84 +1,87 @@
 package com.azurequeue.test.controller;
 
-//Include the following imports to use queue APIs
-import com.azure.storage.queue.*;
-import com.azure.storage.queue.models.*;
-import com.google.gson.Gson;
+
+import com.azurequeue.test.util.AzureConnection;
+import com.azurequeue.test.util.AzureMessageQueue;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
+import com.microsoft.azure.storage.blob.CloudBlockBlob;
 
 import entity.Details;
 import io.swagger.annotations.ApiOperation;
 
-//Include follwing to import Azure blob storage API's 
-import com.azure.storage.blob.*;
 import java.io.*;
-import java.util.Base64;
+import javax.servlet.http.HttpServletRequest;
 
+import org.apache.commons.fileupload.FileItemIterator;
+import org.apache.commons.fileupload.FileItemStream;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/zipfile")
 public class BlobController {
 	
+	@Value("${azure.connectionStr}")
+    private String connectStr;
+	
+	private AzureConnection azureConnection;
+	
+	@Autowired
+	public BlobController(AzureConnection azureConnection) {
+		
+		this.azureConnection = azureConnection;
+	}
+	
 	@ApiOperation(value = "Uploads zip file and publishes message on azure queue")
 	@PostMapping("/uploadAndPublishMessageOnQueue")
-	public String uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+	public ResponseEntity<String> uploadFileAndPublishMessageOnQueue(HttpServletRequest request) throws IOException {
+		
+		boolean isMultipart = ServletFileUpload.isMultipartContent(request);
+		
+		if (!isMultipart) {
+           
+            return new ResponseEntity<String>("Invalid file", HttpStatus.BAD_REQUEST);
+        }
+		
+		// Create a new file upload handler
+        ServletFileUpload upload = new ServletFileUpload();
 		
 		try {
-			String connectStr = "DefaultEndpointsProtocol=https;AccountName=51aa39044cb847dfa2d8;AccountKey=1LYPYvKAnECs97aHckJntU8si6QKKvJEUMBqkObhsE8+VC0iQeqvsASBsnMizfvY4jhj1qK2qVroK7X4CgPASQ==;EndpointSuffix=core.windows.net";
 			
-//			String connectStr = "DefaultEndpointsProtocol=https;AccountName=queuelistener573996;AccountKey=4hGXZopXoN+8n3z42w+IPC2GDUAjRblMFfbETrJhIuG0I+KrrqJFYghad1BjtjGJxOYODzMBSkpXWoRUmjkZSg==;EndpointSuffix=core.windows.net";
+			CloudBlobContainer container = azureConnection.getCloudBlobContainer();
 			
-			// Create a BlobServiceClient object which will be used to create a container client
-			BlobServiceClient blobServiceClient = new BlobServiceClientBuilder().connectionString(connectStr).buildClient();
-
-			//Create a unique name for the container
-			String containerName = "zipfiles";
-
-			// Create the container and return a container client object
-			BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+			FileItemIterator iter = upload.getItemIterator(request);
 			
-			// Get a reference to a blob
-			BlobClient blobClient = containerClient.getBlobClient(file.getOriginalFilename());
-			
-			// Upload to container
-			blobClient.upload(file.getInputStream(), file.getSize(), true);
-			
-			Details d = new Details("123", blobClient.getContainerName()+"/"+blobClient.getBlobName());
-			
-			addQueueMessage(connectStr, "queuetest", d);
-			
-			return "Done";
+            while (iter.hasNext()) {
+            	
+                FileItemStream item = iter.next();
+                
+                //Getting a blob reference
+				CloudBlockBlob blob = container.getBlockBlobReference(item.getName());
+				
+    			blob.setStreamWriteSizeInBytes(256 * 1024); // 256K of a block
+    			
+    			// Upload to container
+    			blob.upload(item.openStream(), -1);
+    			
+    			Details d = new Details("123", blob.getUri());
+    			
+    			// Adds message to azure queue
+    			AzureMessageQueue.addQueueMessage(connectStr, "queuetest", d);
+            } 
+            
+            return new ResponseEntity<String>("Finished", HttpStatus.OK);
 			
 		} catch (Exception e) {
-			return e.getMessage();
+			return new ResponseEntity<String>(e.getMessage(), HttpStatus.BAD_GATEWAY);
 		}
 		
 	}
-	
-	public static void addQueueMessage(String connectStr, String queueName, Details message) throws QueueStorageException {
-	  
-		        // Instantiate a QueueClient which will be
-		        // used to create and manipulate the queue
-		        QueueClient queueClient = new QueueClientBuilder()
-		                                    .connectionString(connectStr)
-		                                    .queueName(queueName)
-		                                    .buildClient();
-		
-		        System.out.println("Adding message to the queue: " + message);
-		
-		        // Add a message to the queue
-		        Gson gSon = new Gson();
-		        String messageToSend = gSon.toJson(message);
-		        System.out.println(messageToSend);
-		        String encodedMsg = Base64.getEncoder().encodeToString(messageToSend.getBytes());
-		        queueClient.sendMessage(encodedMsg);
-		    
-     }
 
 }

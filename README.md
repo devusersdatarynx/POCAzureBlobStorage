@@ -5,6 +5,8 @@
 3.	Java developer kit version 8 or 11.
 4.	Apache Maven version 3.0 or above.
 
+Note: Prerequisite 1 and 2 are required only if Function app (AzureQueueTrigger) is modified and need to deploy on azure.
+
 ## Prerequisite check
 1.	In a terminal or command window, run func --version to check that the Azure Functions Core Tools are version 3.x.
 2.	Run az --version to check that the Azure CLI version is 2.4 or later.
@@ -21,7 +23,7 @@ Receiver application works on Queue Trigger and needs to be deployed on azure st
 * Clone the repository to your local machine
 * Install all the Prerequisites
 * Change the POM.xml and connectionStr as per your azure blob storage account (For more details refer "Azure Unzip with Java details.docx" file in the repository)
-* Deploy receiver(Queue Listener) function to azure using command prompt ```mvn install package azure-functions:deploy```
+* Deploy receiver(Queue Listener) function to azure using command prompt ```mvn install package azure-functions:deploy```. (Already deployed, you can skip or install prerequisite 1 and 2 then deploy)
 * Run publisher application on your local machine
 * Uplaod a zip file and test 
 * For more details please refer "Azure Unzip with Java details.docx" file in the repository
